@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::ops::Add;
+use std::ops::{Add, Mul};
 
 use p3_air::{Air, AirBuilder, AirBuilderWithPublicValues, BaseAir};
 use p3_baby_bear::{BabyBear, DiffusionMatrixBabyBear};
@@ -21,7 +21,7 @@ use rand::thread_rng;
 
 pub struct FibonacciAir {}
 
-impl<F> BaseAir<F> for FibonacciAir {
+impl<F : Field> BaseAir<F> for FibonacciAir {
     fn width(&self) -> usize {
         NUM_FIBONACCI_COLS
     }
@@ -29,7 +29,7 @@ impl<F> BaseAir<F> for FibonacciAir {
 
 impl<F, AB> Air<AB> for FibonacciAir
     where
-        F: AbstractField,
+        F: Field,
         AB: AirBuilderWithPublicValues<F = F>,
 {
     fn eval(&self, builder: &mut AB) {
@@ -53,10 +53,8 @@ impl<F, AB> Air<AB> for FibonacciAir
         //when_first_row.assert_eq(local.right, b);
 
         let mut when_transition = builder.when_transition();
-
-        let sum: AB::Expr = local.left.add(local.right);
-
-        when_transition.assert_eq(sum, next.left);
+        when_transition.assert_eq(AB::Expr::one(), local.right.mul(local.tmp1));
+        when_transition.assert_eq(local.left.mul(local.tmp1), next.left);
 
         // a' <- b
         //when_transition.assert_eq(local.right, next.left);
@@ -79,26 +77,31 @@ pub fn generate_trace_rows<F: PrimeField64>(a: u64, b: u64, n: usize) -> RowMajo
     assert!(suffix.is_empty(), "Alignment should match");
     assert_eq!(rows.len(), n);
 
-    rows[0] = FibonacciRow::new(F::from_canonical_u64(a), F::from_canonical_u64(b));
+    let a = F::from_canonical_u64(a);
+    let b = F::from_canonical_u64(b);
+
+    rows[0] = FibonacciRow::new(a, b, b.inverse(), F::zero());
 
     for i in 1..n {
-        rows[i].left = rows[i - 1].right.add(rows[i-1].left);
+        rows[i].left = rows[i-1].left.div(rows[i-1].right);
         //rows[i].right = rows[i - 1].left + rows[i - 1].right;
     }
 
     trace
 }
 
-const NUM_FIBONACCI_COLS: usize = 2;
+const NUM_FIBONACCI_COLS: usize = 4;
 
 pub struct FibonacciRow<F> {
     pub left: F,
     pub right: F,
+    pub tmp1: F,
+    pub tmp2: F,
 }
 
 impl<F> FibonacciRow<F> {
-    const fn new(left: F, right: F) -> FibonacciRow<F> {
-        FibonacciRow { left, right }
+    const fn new(left: F, right: F, tmp1: F, tmp2: F) -> FibonacciRow<F> {
+        FibonacciRow { left, right, tmp1, tmp2 }
     }
 }
 
@@ -138,7 +141,8 @@ fn test_public_value() {
     let val_mmcs = ValMmcs::new(hash, compress);
     let challenge_mmcs = ChallengeMmcs::new(val_mmcs.clone());
     let dft = Dft {};
-    let trace = generate_trace_rows::<Val>(10, 1, 2);
+    // x=10 and y=1811939329 s.t. x/y=z=100 in Baby Bear
+    let trace = generate_trace_rows::<Val>(10, 1811939329, 2);
     let fri_config = FriConfig {
         log_blowup: 2,
         num_queries: 28,
@@ -149,7 +153,7 @@ fn test_public_value() {
     let config = MyConfig::new(pcs);
     let mut challenger = Challenger::new(perm.clone());
     let pis = vec![
-        BabyBear::from_canonical_u64(11),
+        BabyBear::from_canonical_u64(100),
     ];
     let proof = prove(&config, &FibonacciAir {}, &mut challenger, trace, &pis);
     let mut challenger = Challenger::new(perm);
