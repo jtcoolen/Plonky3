@@ -36,22 +36,21 @@ impl<F, AB> Air<AB> for FibonacciAir
         let main = builder.main();
         let pis = builder.public_values();
 
-        // inputs
-        let a = pis[0];
-        let b = pis[1];
-        // result
-        let x = pis[2];
-        // are all public values for now
+        // inputs are private
+        //let a = pis[0];
+        //let b = pis[1];
+        // result is a public input
+        let x = pis[0];
 
         let (local, next) = (main.row_slice(0), main.row_slice(1));
         let local: &FibonacciRow<AB::Var> = (*local).borrow();
         let next: &FibonacciRow<AB::Var> = (*next).borrow();
 
-        let mut when_first_row = builder.when_first_row();
+        //let mut when_first_row = builder.when_first_row();
 
         // constraints on inputs
-        when_first_row.assert_eq(local.left, a);
-        when_first_row.assert_eq(local.right, b);
+        //when_first_row.assert_eq(local.left, a);
+        //when_first_row.assert_eq(local.right, b);
 
         let mut when_transition = builder.when_transition();
 
@@ -150,8 +149,6 @@ fn test_public_value() {
     let config = MyConfig::new(pcs);
     let mut challenger = Challenger::new(perm.clone());
     let pis = vec![
-        BabyBear::from_canonical_u64(10),
-        BabyBear::from_canonical_u64(1),
         BabyBear::from_canonical_u64(11),
     ];
     let proof = prove(&config, &FibonacciAir {}, &mut challenger, trace, &pis);
