@@ -1,2 +1,3 @@
 - while one can use the BN254 prime field with Poseidon hash function in Plonky3 (I tried), the underlying proof system (FRI) expects prime field elements fitting in at most 64 bits
 - so we'll have to implement BN254 on vectors of Baby Bear elements (8 elements being required to represent an element from the BN254 prime field)
+- for now I'll try to implement elliptic curve addition for a simple non singular elliptic curve defined over Baby Bear
