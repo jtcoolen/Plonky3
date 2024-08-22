@@ -78,10 +78,16 @@ where
         let x1 = local.point1_x;
         let y1 = local.point1_y;
         let x2 = local.point2_x;
+        let y2 = local.point2_y;
 
-        // check lambda
-        when_transition.assert_eq(AB::Expr::one(), next.tmp2.mul(next.tmp3));
-        when_transition.assert_eq(next.tmp1.mul(next.tmp2), next.tmp4);
+        let tmp1 = y2 - y1;
+        let tmp3 = x2 - x1;
+        // check tmp1 & tmp3
+        when_transition.assert_eq(next.tmp1, tmp1);
+        when_transition.assert_eq(next.tmp3, tmp3);
+
+        when_transition.assert_eq(AB::Expr::one(), next.tmp2.mul(next.tmp3)); // check tmp2
+        when_transition.assert_eq(next.tmp1.mul(next.tmp2), next.tmp4); // check lambda
 
         let x3 = next.tmp4.into().square() - x1 - x2;
         let y3 = next.tmp4 * (x1 - x3.clone()) - y1;
